@@ -1,0 +1,144 @@
+{
+  "name": "AI Quiz Generator (AI Automation Projects #23)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "make-quiz",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "279699ae-002c-5519-b19f-d74cc22dc01a",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "353a5279-8db6-5dbb-aa16-1ceac566efb8"
+    },
+    {
+      "parameters": {},
+      "id": "91a42c76-be15-5375-bd2d-ad4f28defd9b",
+      "name": "Test with sample data",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sample data from this repo. Click 'Test workflow' to run the whole flow on it.\nconst sample = [\n {\n  \"notes\": \"Topic: Introduction to AI automation\\n\\nAutomation is the use of technology to perform tasks with minimal human input.\\nA trigger is the event that starts a workflow, such as a new form submission.\\nAn action is a step the workflow performs after the trigger fires.\\nA webhook is a URL that receives data from another app the moment something happens.\\nAn API is a set of rules that lets two software systems talk to each other.\\nA large language model is an AI system trained on text that can read and write natural language.\\nPrompt engineering refers to writing clear instructions so an AI model gives useful output.\\nAn AI agent is a system that uses a language model to decide which tools to call to reach a goal.\\n\",\n  \"count\": 6\n }\n];\nreturn sample.map(json => ({ json }));"
+      },
+      "id": "f10835f0-65e8-59ec-aab8-152d3ddd19df",
+      "name": "Sample data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// AI Quiz Generator: core logic (ported from main.py)\n\n// ---- input normaliser (works for Webhook, Form, WhatsApp, Gmail, Sheets and sample data)\nconst input = $input.all().flatMap(i => {\n  const j = i.json || {};\n  if (j.messages && Array.isArray(j.messages)) {           // WhatsApp Trigger\n    return j.messages.filter(m => m.text).map(m => ({ from: '+' + m.from, text: m.text.body }));\n  }\n  if (j.Subject !== undefined || j.From !== undefined) {     // Gmail Trigger (simple)\n    return [{ from: (j.From || '').replace(/.*<|>.*/g, ''), subject: j.Subject || '', body: j.snippet || j.text || '' }];\n  }\n  const b = (j.body !== undefined && j.headers !== undefined) ? j.body : j;   // Webhook wraps payload in body\n  if (Array.isArray(b)) return b;\n  if (b && Array.isArray(b.items)) return b.items;\n  return [b];\n});\n\nconst PAT = /^(?:(?:An?|The)\\s+)?([A-Za-z][\\w\\s-]{1,40}?)\\s+(is|are|refers to|means)\\s+(.+?)\\.$/;\nlet seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;\nconst shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };\nreturn input.map(({ notes, count = 6 }) => {\n  const facts = notes.split(/(?<=\\.)\\s+|\\n+/).map(s => s.trim().match(PAT)).filter(Boolean)\n    .map(m => ({ term: m[1][0].toUpperCase() + m[1].slice(1).trim(), verb: m[2], def: m[3].trim() }));\n  const terms = facts.map(f => f.term);\n  const questions = facts.slice(0, count).map((f, i) => {\n    const others = terms.filter(t => t !== f.term);\n    if (i % 2 === 0 && others.length >= 3) return { type: 'MCQ', question: `Which term ${f.verb} ${f.def}?`, options: shuffle([...shuffle([...others]).slice(0, 3), f.term]), answer: f.term };\n    return { type: 'Fill in the blank', question: `________ ${f.verb} ${f.def}.`, options: [], answer: f.term };\n  });\n  const sheet = questions.map((q, i) => `${i + 1}. ${q.question}` + q.options.map((o, j) => `\\n   ${'ABCD'[j]}. ${o}`).join('')).join('\\n\\n');\n  return { json: { questions, quiz: sheet, answer_key: questions.map((q, i) => `${i + 1}. ${q.answer}`).join('\\n') } };\n});\n"
+      },
+      "id": "eee829aa-dd5c-500b-ace9-7442b0590553",
+      "name": "Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "bc6070d2-63db-546d-a1fe-c571bc8c0c2d",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## AI Quiz Generator\nPaste lesson notes, get a ready-to-use quiz with answers, distractors and a printable answer key.\n\nPOST `{notes, count}` (lesson notes as text). Definition sentences become multiple-choice and fill-in-the-blank questions with on-topic distractors. Returns the quiz and answer key; connect a Google Forms or Docs node to publish it.\n\n**Try it:** click *Test workflow* to run on the sample data. Then connect your credentials on the output nodes and activate.\n\nCode and docs: github.com/Princewill106/ai-quiz-generator",
+        "height": 340,
+        "width": 420,
+        "color": 5
+      },
+      "id": "c079d063-2bf8-57f8-9911-8a8a9edbf7c9",
+      "name": "About this workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -460
+      ]
+    }
+  ],
+  "connections": {
+    "Test with sample data": {
+      "main": [
+        [
+          {
+            "node": "Sample data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sample data": {
+      "main": [
+        [
+          {
+            "node": "Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Logic": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

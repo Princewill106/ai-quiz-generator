@@ -1,0 +1,10 @@
+Topic: Introduction to AI automation
+
+Automation is the use of technology to perform tasks with minimal human input.
+A trigger is the event that starts a workflow, such as a new form submission.
+An action is a step the workflow performs after the trigger fires.
+A webhook is a URL that receives data from another app the moment something happens.
+An API is a set of rules that lets two software systems talk to each other.
+A large language model is an AI system trained on text that can read and write natural language.
+Prompt engineering refers to writing clear instructions so an AI model gives useful output.
+An AI agent is a system that uses a language model to decide which tools to call to reach a goal.
